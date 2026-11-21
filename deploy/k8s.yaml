@@ -41,6 +41,8 @@ spec:
     metadata:
       labels: { app: floodgate }
     spec:
+      imagePullSecrets:
+        - name: ecr-creds          # refreshed every 6h by a host timer (ECR tokens expire)
       containers:
         - name: floodgate
           image: 537725238632.dkr.ecr.ap-south-1.amazonaws.com/floodgate:latest
