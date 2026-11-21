@@ -16,7 +16,7 @@ import (
 	"net/http"
 	"time"
 
-	ratelimit "github.com/trickster03/go-rate-limiter"
+	ratelimit "github.com/trickster03/floodgate"
 
 	"github.com/redis/go-redis/v9"
 )

@@ -1,4 +1,4 @@
-# go-rate-limiter
+# floodgate
 
 A small, composable HTTP rate limiter for Go. Two algorithms — **token bucket** and **sliding-window log** — each available **in-process** (fast, per-instance) or **Redis-backed** (one limit enforced across every replica). Drops into any `net/http` service as middleware.
 
@@ -55,7 +55,7 @@ X-RateLimit-Reset: 2
 ## Library use
 
 ```go
-import ratelimit "github.com/trickster03/go-rate-limiter"
+import ratelimit "github.com/trickster03/floodgate"
 
 // in-process
 l := ratelimit.NewTokenBucket(100, 200)                 // 100 req/s, burst 200

@@ -1,4 +1,4 @@
-module github.com/trickster03/go-rate-limiter
+module github.com/trickster03/floodgate
 
 go 1.27
 
