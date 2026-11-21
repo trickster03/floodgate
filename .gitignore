@@ -1,0 +1,14 @@
+# binaries
+/demo
+/bin/
+*.out
+*.test
+
+# go
+go.work
+go.work.sum
+
+# os / editor
+.DS_Store
+.idea/
+.vscode/
