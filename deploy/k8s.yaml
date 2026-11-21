@@ -1,0 +1,70 @@
+# Shared Redis — the distributed limiter's single source of truth.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: redis
+spec:
+  replicas: 1
+  selector:
+    matchLabels: { app: redis }
+  template:
+    metadata:
+      labels: { app: redis }
+    spec:
+      containers:
+        - name: redis
+          image: redis:7-alpine
+          ports: [{ containerPort: 6379 }]
+          resources:
+            requests: { cpu: "50m", memory: "64Mi" }
+            limits: { cpu: "200m", memory: "128Mi" }
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: redis
+spec:
+  selector: { app: redis }
+  ports: [{ port: 6379, targetPort: 6379 }]
+---
+# floodgate ratelimitd — 2 replicas sharing Redis prove ONE global limit holds
+# across instances (the whole point of the distributed design).
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: floodgate
+spec:
+  replicas: 2
+  selector:
+    matchLabels: { app: floodgate }
+  template:
+    metadata:
+      labels: { app: floodgate }
+    spec:
+      containers:
+        - name: floodgate
+          image: 537725238632.dkr.ecr.ap-south-1.amazonaws.com/floodgate:latest
+          imagePullPolicy: Always   # always pull :latest on a rollout restart
+          ports: [{ containerPort: 8080 }]
+          env:
+            - { name: REDIS_ADDR, value: "redis:6379" }
+            - { name: RATE_PER_SEC, value: "10" }
+            - { name: BURST, value: "20" }
+          readinessProbe:
+            httpGet: { path: /healthz, port: 8080 }
+            initialDelaySeconds: 2
+          livenessProbe:
+            httpGet: { path: /healthz, port: 8080 }
+            initialDelaySeconds: 5
+          resources:
+            requests: { cpu: "50m", memory: "32Mi" }
+            limits: { cpu: "250m", memory: "64Mi" }
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: floodgate
+spec:
+  selector: { app: floodgate }
+  ports: [{ port: 80, targetPort: 8080 }]
+  type: ClusterIP

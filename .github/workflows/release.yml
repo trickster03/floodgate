@@ -1,0 +1,44 @@
+name: release
+on:
+  push:
+    tags: ['v*']
+
+permissions:
+  id-token: write   # required for AWS OIDC federation
+  contents: read
+
+env:
+  AWS_REGION: ap-south-1
+  ECR_REGISTRY: 537725238632.dkr.ecr.ap-south-1.amazonaws.com
+  IMAGE: floodgate
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Configure AWS credentials (OIDC — no stored keys)
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: arn:aws:iam::537725238632:role/github-actions-deployer
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Log in to Amazon ECR
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Build and push image
+        run: |
+          TAG="${GITHUB_REF_NAME}"
+          docker build -t "$ECR_REGISTRY/$IMAGE:$TAG" -t "$ECR_REGISTRY/$IMAGE:latest" .
+          docker push "$ECR_REGISTRY/$IMAGE:$TAG"
+          docker push "$ECR_REGISTRY/$IMAGE:latest"
+
+      - name: Deploy to k3s (rollout restart via SSM — no exposed API server)
+        run: |
+          aws ssm send-command \
+            --region "$AWS_REGION" \
+            --document-name "AWS-RunShellScript" \
+            --targets "Key=tag:Role,Values=k3s" \
+            --comment "Deploy floodgate ${GITHUB_REF_NAME}" \
+            --parameters 'commands=["/usr/local/bin/kubectl -n default rollout restart deployment/floodgate","/usr/local/bin/kubectl -n default rollout status deployment/floodgate --timeout=120s"]'
